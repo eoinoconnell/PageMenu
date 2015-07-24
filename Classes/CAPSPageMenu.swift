@@ -431,65 +431,6 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
         selectionIndicatorView = UIView(frame: selectionIndicatorFrame)
         selectionIndicatorView.backgroundColor = selectionIndicatorColor
         menuScrollView.addSubview(selectionIndicatorView)
-        
-        if menuItemWidthBasedOnTitleTextWidth && centerMenuItems {
-            self.configureMenuItemWidthBasedOnTitleTextWidthAndCenterMenuItems()
-            let leadingAndTrailingMargin = self.getMarginForMenuItemWidthBasedOnTitleTextWidthAndCenterMenuItems()
-            selectionIndicatorView.frame = CGRectMake(leadingAndTrailingMargin, menuHeight - selectionIndicatorHeight, menuItemWidths[0], selectionIndicatorHeight)
-        }
-    }
-    
-    // Adjusts the menu item frames to size item width based on title text width and center all menu items in the center
-    // if the menuItems all fit in the width of the view. Otherwise, it will adjust the frames so that the menu items
-    // appear as if only menuItemWidthBasedOnTitleTextWidth is true.
-    private func configureMenuItemWidthBasedOnTitleTextWidthAndCenterMenuItems() {
-        // only center items if the combined width is less than the width of the entire view's bounds
-        if menuScrollView.contentSize.width < CGRectGetWidth(self.view.bounds) {
-            // compute the margin required to center the menu items
-            let leadingAndTrailingMargin = self.getMarginForMenuItemWidthBasedOnTitleTextWidthAndCenterMenuItems()
-            
-            // adjust the margin of each menu item to make them centered
-            for (index, menuItem) in enumerate(menuItems) {
-                let controllerTitle = controllerArray[index].title!
-                
-                let itemWidthRect = controllerTitle.boundingRectWithSize(CGSizeMake(1000, 1000), options: NSStringDrawingOptions.UsesLineFragmentOrigin, attributes: [NSFontAttributeName:menuItemFont], context: nil)
-                
-                menuItemWidth = itemWidthRect.width
-                
-                var margin: CGFloat
-                if index == 0 {
-                    // the first menu item should use the calculated margin
-                    margin = leadingAndTrailingMargin
-                } else {
-                    // the other menu items should use the menuMargin
-                    let previousMenuItem = menuItems[index-1]
-                    let previousX = CGRectGetMaxX(previousMenuItem.frame)
-                    margin = previousX + menuMargin
-                }
-                
-                menuItem.frame = CGRectMake(margin, 0.0, menuItemWidth, menuHeight)
-            }
-        } else {
-            // the menuScrollView.contentSize.width exceeds the view's width, so layout the menu items normally (menuItemWidthBasedOnTitleTextWidth)
-            for (index, menuItem) in enumerate(menuItems) {
-                var menuItemX: CGFloat
-                if index == 0 {
-                    menuItemX = menuMargin
-                } else {
-                    menuItemX = CGRectGetMaxX(menuItems[index-1].frame) + menuMargin
-                }
-                
-                menuItem.frame = CGRectMake(menuItemX, 0.0, CGRectGetWidth(menuItem.bounds), CGRectGetHeight(menuItem.bounds))
-            }
-        }
-    }
-    
-    // Returns the size of the left and right margins that are neccessary to layout the menuItems in the center.
-    private func getMarginForMenuItemWidthBasedOnTitleTextWidthAndCenterMenuItems() -> CGFloat {
-        let menuItemsTotalWidth = menuScrollView.contentSize.width - menuMargin * 2
-        let leadingAndTrailingMargin = (CGRectGetWidth(self.view.bounds) - menuItemsTotalWidth) / 2
-        
-        return leadingAndTrailingMargin
     }
     
     
@@ -684,7 +625,13 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
                     selectionIndicatorWidth = self.view.frame.width / CGFloat(self.controllerArray.count)
                 } else if self.menuItemWidthBasedOnTitleTextWidth {
                     selectionIndicatorWidth = self.menuItemWidths[pageIndex]
-                    selectionIndicatorX = CGRectGetMinX(self.menuItems[pageIndex].frame)
+                    selectionIndicatorX += self.menuMargin
+                    
+                    if pageIndex > 0 {
+                        for i in 0...(pageIndex - 1) {
+                            selectionIndicatorX += (self.menuMargin + self.menuItemWidths[i])
+                        }
+                    }
                 } else {
                     if self.centerMenuItems && pageIndex == 0 {
                         selectionIndicatorX = self.startingMenuMargin + self.menuMargin
@@ -720,38 +667,18 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
             if useMenuLikeSegmentedControl {
                 itemIndex = Int(tappedPoint.x / (self.view.frame.width / CGFloat(controllerArray.count)))
             } else if menuItemWidthBasedOnTitleTextWidth {
-                var menuItemLeftBound: CGFloat
-                var menuItemRightBound: CGFloat
+                // Base case being first item
+                var menuItemLeftBound : CGFloat = 0.0
+                var menuItemRightBound : CGFloat = menuItemWidths[0] + menuMargin + (menuMargin / 2)
                 
-                if centerMenuItems {
-                    menuItemLeftBound = CGRectGetMinX(menuItems[0].frame)
-                    menuItemRightBound = CGRectGetMaxX(menuItems[menuItems.count-1].frame)
-                    
-                    if (tappedPoint.x >= menuItemLeftBound && tappedPoint.x <= menuItemRightBound) {
-                        for (index, controller) in enumerate(controllerArray) {
-                            menuItemLeftBound = CGRectGetMinX(menuItems[index].frame)
-                            menuItemRightBound = CGRectGetMaxX(menuItems[index].frame)
-                            
-                            if tappedPoint.x >= menuItemLeftBound && tappedPoint.x <= menuItemRightBound {
-                                itemIndex = index
-                                break
-                            }
-                        }
-                    }
-                } else {
-                    // Base case being first item
-                    menuItemLeftBound = 0.0
-                    menuItemRightBound = menuItemWidths[0] + menuMargin + (menuMargin / 2)
-                    
-                    if !(tappedPoint.x >= menuItemLeftBound && tappedPoint.x <= menuItemRightBound) {
-                        for i in 1...controllerArray.count - 1 {
-                            menuItemLeftBound = menuItemRightBound + 1.0
-                            menuItemRightBound = menuItemLeftBound + menuItemWidths[i] + menuMargin
-                            
-                            if tappedPoint.x >= menuItemLeftBound && tappedPoint.x <= menuItemRightBound {
-                                itemIndex = i
-                                break
-                            }
+                if !(tappedPoint.x >= menuItemLeftBound && tappedPoint.x <= menuItemRightBound) {
+                    for i in 1...controllerArray.count - 1 {
+                        menuItemLeftBound = menuItemRightBound + 1.0
+                        menuItemRightBound = menuItemLeftBound + menuItemWidths[i] + menuMargin
+                        
+                        if tappedPoint.x >= menuItemLeftBound && tappedPoint.x <= menuItemRightBound {
+                            itemIndex = i
+                            break
                         }
                     }
                 }
@@ -819,7 +746,7 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
         delegate?.willMoveToPage?(currentController, index: index)
         
         var newVC = controllerArray[index]
-                
+        
         newVC.view.frame = CGRectMake(self.view.frame.width * CGFloat(index), menuHeight, self.view.frame.width, self.view.frame.height - menuHeight)
         
         self.addChildViewController(newVC)
@@ -842,9 +769,9 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
     override public func viewDidLayoutSubviews() {
         // Configure controller scroll view content size
         controllerScrollView.contentSize = CGSizeMake(self.view.frame.width * CGFloat(controllerArray.count), self.view.frame.height - menuHeight)
-
+        
         var oldCurrentOrientationIsPortrait : Bool = currentOrientationIsPortrait
-        currentOrientationIsPortrait = UIApplication.sharedApplication().statusBarOrientation.isPortrait
+        currentOrientationIsPortrait = UIDevice.currentDevice().orientation.isPortrait
         
         if (oldCurrentOrientationIsPortrait && UIDevice.currentDevice().orientation.isLandscape) || (!oldCurrentOrientationIsPortrait && UIDevice.currentDevice().orientation.isPortrait) {
             didLayoutSubviewsAfterRotation = true
@@ -868,10 +795,6 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
                     
                     index++
                 }
-            } else if menuItemWidthBasedOnTitleTextWidth && centerMenuItems {
-                self.configureMenuItemWidthBasedOnTitleTextWidthAndCenterMenuItems()
-                let selectionIndicatorX = CGRectGetMinX(menuItems[currentPageIndex].frame)
-                selectionIndicatorView.frame = CGRectMake(selectionIndicatorX, menuHeight - selectionIndicatorHeight, menuItemWidths[currentPageIndex], selectionIndicatorHeight)
             } else if centerMenuItems {
                 startingMenuMargin = ((self.view.frame.width - ((CGFloat(controllerArray.count) * menuItemWidth) + (CGFloat(controllerArray.count - 1) * menuMargin))) / 2.0) -  menuMargin
                 
@@ -912,8 +835,8 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
             }
         }
         
-        // Hsoi 2015-02-05 - Running on iOS 7.1 complained: "'NSInternalInconsistencyException', reason: 'Auto Layout 
-        // still required after sending -viewDidLayoutSubviews to the view controller. ViewController's implementation 
+        // Hsoi 2015-02-05 - Running on iOS 7.1 complained: "'NSInternalInconsistencyException', reason: 'Auto Layout
+        // still required after sending -viewDidLayoutSubviews to the view controller. ViewController's implementation
         // needs to send -layoutSubviews to the view to invoke auto layout.'"
         //
         // http://stackoverflow.com/questions/15490140/auto-layout-error
