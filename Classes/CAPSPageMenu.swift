@@ -264,7 +264,7 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
         self.view.addSubview(menuScrollView)
         
         let menuScrollView_constraint_H:Array = NSLayoutConstraint.constraintsWithVisualFormat("H:|[menuScrollView]|", options: NSLayoutFormatOptions(0), metrics: nil, views: viewsDictionary)
-        let menuScrollView_constraint_V:Array = NSLayoutConstraint.constraintsWithVisualFormat("V:[menuScrollView(\(menuHeight))]", options: NSLayoutFormatOptions(0), metrics: nil, views: viewsDictionary)
+        let menuScrollView_constraint_V:Array = NSLayoutConstraint.constraintsWithVisualFormat("V:|[menuScrollView(\(menuHeight))]", options: NSLayoutFormatOptions(0), metrics: nil, views: viewsDictionary)
         
         self.view.addConstraints(menuScrollView_constraint_H)
         self.view.addConstraints(menuScrollView_constraint_V)
@@ -332,9 +332,7 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
         for controller in controllerArray {
             if index == 0.0 {
                 // Add first two controllers to scrollview and as child view controller
-                controller.viewWillAppear(true)
                 addPageAtIndex(0)
-                controller.viewDidAppear(true)
             }
             
             // Set up menu item for menu scroll view
@@ -821,9 +819,7 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
         delegate?.willMoveToPage?(currentController, index: index)
         
         var newVC = controllerArray[index]
-        
-        newVC.willMoveToParentViewController(self)
-        
+                
         newVC.view.frame = CGRectMake(self.view.frame.width * CGFloat(index), menuHeight, self.view.frame.width, self.view.frame.height - menuHeight)
         
         self.addChildViewController(newVC)
@@ -838,8 +834,6 @@ public class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureReco
         
         oldVC.view.removeFromSuperview()
         oldVC.removeFromParentViewController()
-        
-        oldVC.didMoveToParentViewController(nil)
     }
     
     
